@@ -756,8 +756,14 @@ html, body {
                 <tr><td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">Loading contacts...</td></tr>
               </tbody>
             </table>
+                    </div>
+
+          <!-- Pagination Controls -->
+          <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:14px;">
+            <button class="btn secondary" onclick="changeContactsPage(-1)">← Previous</button>
+            <button class="btn secondary" onclick="changeContactsPage(1)">Next →</button>
           </div>
-        </section>
+              </section>
 
         <!-- PANEL: PARTNERSHIPS (Maintains exact look of the old version: cards with logo, clickable for details modal) -->
         <section id="tab-partnerships" class="panel">
@@ -3339,6 +3345,19 @@ function openMailingModal() {
   loadMailInbox();
   loadMailSent();
 }
+
+    function switchMailTab(tabName, btnEl) {
+  document.getElementById('mail-compose-view').style.display = tabName === 'compose' ? 'block' : 'none';
+  document.getElementById('mail-sent-view').style.display = tabName === 'sent' ? 'block' : 'none';
+  document.getElementById('mail-inbox-view').style.display = tabName === 'inbox' ? 'block' : 'none';
+
+  document.querySelectorAll('#modal-mailing .sub-nav-tab').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  if (tabName === 'sent') loadMailSent();
+  if (tabName === 'inbox') loadMailInbox();
+}
+    
 function addTypedRecipient() {
   const input = document.getElementById('mail-recipient-typein');
   const email = input.value.trim();
@@ -3404,12 +3423,16 @@ async function submitMailingBroadcast() {
     : await apiPost('sendContactEmail', { recipientEmails: mailRecipients, subject, messageBody, attachmentFileId });
 
   btn.innerText = 'Send Official Communication'; btn.disabled = false;
-  if (res.success) {
+    if (res.success) {
     alert(isScheduled ? '📅 Communication scheduled!' : `✅ Official email broadcast sent to ${res.count} contact(s)!`);
     mailRecipients = [];
     renderMailChips();
     document.getElementById('mail-subject').value = '';
     document.getElementById('mail-body').value = '';
+    document.getElementById('mail-attachment').value = '';
+    document.getElementById('mail-schedule-toggle').checked = false;
+    document.getElementById('mail-schedule-time').value = '';
+    document.getElementById('mail-schedule-time').style.display = 'none';
     loadMailSent();
   } else alert(res.error || 'Failed');
 }
