@@ -1473,9 +1473,9 @@ html, body {
 
       <!-- Mailing Tabs -->
       <div class="sub-nav-tabs">
-        <button class="sub-nav-tab active" onclick="switchMailTab('compose', this)">✍️ Compose Broadcast</button>
-        <button class="sub-nav-tab" onclick="switchMailTab('sent', this)">📤 Sent History</button>
-        <button class="sub-nav-tab" onclick="switchMailTab('inbox', this)">📥 Inbox & Replies</button>
+        <button class="sub-nav-tab active" onclick="switchMailTab('compose', this)">✍️ Compose Mail</button>
+        <button class="sub-nav-tab" onclick="switchMailTab('sent', this)">📤 SentBox</button>
+        <button class="sub-nav-tab" onclick="switchMailTab('inbox', this)">📥 Inbox </button>
       </div>
 
       <!-- Mail Compose Section -->
@@ -1494,7 +1494,7 @@ html, body {
         </div>
 
         <div class="field">
-          <label>Message Body (HTML or Plain Text) *</label>
+          <label>Message Body</label>
           <textarea id="mail-body" rows="6" placeholder="Dear Team / Partners,&#10;&#10;We are pleased to inform you..."></textarea>
         </div>
 
@@ -1518,7 +1518,7 @@ html, body {
 
         <div style="display:flex; justify-content:flex-end; gap:8px;">
           <button class="btn secondary" onclick="closeModal('modal-mailing')">Close</button>
-          <button class="btn" id="mail-send-btn" onclick="submitMailingBroadcast()">Send mail from info.uaf@gmail.com</button>
+          <button class="btn" id="mail-send-btn" onclick="submitMailingBroadcast()">Send mail</button>
         </div>
       </div>
 
