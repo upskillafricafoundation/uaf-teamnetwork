@@ -1498,9 +1498,14 @@ html, body {
           <textarea id="mail-body" rows="6" placeholder="Dear Team / Partners,&#10;&#10;We are pleased to inform you..."></textarea>
         </div>
 
-        <div class="field">
+                <div class="field">
           <label>Attachment (PDF, Word, Images)</label>
-          <input type="file" id="mail-attachment">
+          <input type="file" id="mail-attachment" style="display:none;" onchange="updateMailAttachmentLabel()">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" class="btn secondary" style="padding:6px 12px; font-size:12px;" onclick="document.getElementById('mail-attachment').click()">📎 Choose File</button>
+            <span id="mail-attachment-name" style="font-size:12.5px; color:var(--muted); flex:1;">No file selected</span>
+            <button type="button" id="mail-attachment-cancel-btn" class="btn danger" style="display:none; padding:4px 10px; font-size:11px;" onclick="clearMailAttachment()">✕ Cancel</button>
+          </div>
         </div>
 
         <div style="display:flex; align-items:center; gap:12px; margin:14px 0;">
