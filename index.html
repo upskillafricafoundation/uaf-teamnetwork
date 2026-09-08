@@ -1096,8 +1096,7 @@ html, body {
             <div class="card-container" style="padding:18px; margin-bottom:16px; background:linear-gradient(135deg, #EFF6FF, #DBEAFE); border:1.5px solid #BFDBFE;">
               <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
                 <div style="display:flex; align-items:center; gap:14px;">
-                  <img src="./icon.png" style="width:52px; height:52px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.15);" alt="UAF App Icon">
-                  <div>
+                  <img src="./icon.png" onerror="this.onerror=null;this.src='./icon-192.png';" style="width:52px; height:52px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.15);" alt="UAF App Icon">                  <div>
                     <div style="font-weight:800; font-size:15px; color:#1E3A8A;">Install UAF Desktop & Mobile App</div>
                     <div style="font-size:12.5px; color:#1D4ED8; margin-top:2px;" id="pwa-install-status">
                       Add UAF directly to your Windows desktop, Mac dock, or smartphone home screen.
@@ -1108,10 +1107,14 @@ html, body {
               </div>
             </div>
 
-            <!-- Profile Settings Form with Current Position for Role-based Access -->
+          <!-- Profile Settings Form with Current Position for Role-based Access (Collapsible) -->
             <div class="card-container" style="padding:20px; margin-bottom:16px;">
-              <h3 style="margin:0 0 14px; font-size:16px; font-weight:800; color:var(--navy-text);">User Profile Information</h3>
-              
+              <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleSettingsSection('profile-settings-body', this)">
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:var(--navy-text);">User Profile Information</h3>
+                <span class="settings-collapse-arrow" style="font-size:13px; color:var(--muted); transition:transform 0.2s;">▼</span>
+              </div>
+
+              <div id="profile-settings-body" style="margin-top:14px;">
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                 <div class="field">
                   <label>Full Official Name</label>
@@ -1132,6 +1135,7 @@ html, body {
                     <option value="Madam">Madam</option>
                     <option value="Dr.">Dr.</option>
                     <option value="Rev.">Rev.</option>
+                     <option value="Cllr.">Cllr.</option>
                     <option value="Hon.">Hon.</option>
                   </select>
                 </div>
@@ -1187,7 +1191,8 @@ html, body {
                 <input type="text" id="settings-past-positions" placeholder="Previous positions held in civil society">
               </div>
 
-              <button class="btn" id="btn-save-profile" onclick="saveSettingsProfile()">Save Profile Settings</button>
+              <button class="btn" id="btn-save-profile" onclick="saveProfileSettings()">Save Profile Settings</button>
+              </div>
             </div>
 
             <!-- Live Notifications Diagnostics & Audio Engine Test -->
@@ -1647,6 +1652,18 @@ html, body {
       <div class="field">
         <label>Strategic Purpose & Scope</label>
         <textarea id="part-purpose" rows="3"></textarea>
+      </div>
+      <div class="field">
+        <label>Physical Address</label>
+        <input type="text" id="part-address">
+      </div>
+      <div class="field">
+        <label>Partnership Period</label>
+        <input type="text" id="part-period" placeholder="e.g. 2024 - 2027">
+      </div>
+      <div class="field">
+        <label>Strategic Gains / Mutual Impact</label>
+        <textarea id="part-gains" rows="2"></textarea>
       </div>
       <div class="field">
         <label>Partner Logo Image (Optional)</label>
@@ -3721,7 +3738,7 @@ async function submitEditPartnership() {
 }
 async function submitNewPartnership() {
   const name = document.getElementById('part-name').value.trim();
-  if (!name) return;
+  if (!name) { alert('Partner organization name is required.'); return; }
   let logoUrl = '';
   const file = document.getElementById('part-logo').files[0];
   if (file) {
@@ -3729,15 +3746,31 @@ async function submitNewPartnership() {
     const up = await apiPost('uploadFile', { base64Data: base64, fileName: file.name, mimeType: file.type });
     if (up.directUrl) logoUrl = up.directUrl;
   }
-  await apiPost('addPartnership', {
+  const res = await apiPost('addPartnership', {
     name,
     category: document.getElementById('part-category').value,
     dateOfPartnership: document.getElementById('part-date').value,
     purpose: document.getElementById('part-purpose').value.trim(),
+    whatUafGains: document.getElementById('part-gains').value.trim(),
+    partnershipPeriod: document.getElementById('part-period').value.trim(),
     partnerEmail: document.getElementById('part-email').value.trim(),
     tel: document.getElementById('part-tel').value.trim(),
+    address: document.getElementById('part-address').value.trim(),
     logoUrl
   });
+  if (res.error) { alert(res.error); return; }
+
+  // Clear the form for the next entry
+  document.getElementById('part-name').value = '';
+  document.getElementById('part-email').value = '';
+  document.getElementById('part-tel').value = '';
+  document.getElementById('part-date').value = '';
+  document.getElementById('part-purpose').value = '';
+  document.getElementById('part-address').value = '';
+  document.getElementById('part-period').value = '';
+  document.getElementById('part-gains').value = '';
+  document.getElementById('part-logo').value = '';
+
   closeModal('modal-partnership');
   loadPartnerships();
 }
@@ -4427,6 +4460,14 @@ function applyTheme(t) {
   else if (t === 'teal') document.body.removeAttribute('data-theme');
   else document.body.setAttribute('data-theme', t);
   localStorage.setItem('uaf_theme', t);
+}
+    function toggleSettingsSection(bodyId, headerEl) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? 'block' : 'none';
+  const arrow = headerEl.querySelector('.settings-collapse-arrow');
+  if (arrow) arrow.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(-90deg)';
 }
 async function submitChangePassword() {
   const res = await apiPost('changePassword', {
