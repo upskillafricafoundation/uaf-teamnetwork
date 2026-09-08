@@ -3023,42 +3023,45 @@ async function saveProfileSettings() {
   const btn = document.getElementById('btn-save-profile');
   btn.innerText = 'Saving...'; btn.disabled = true;
 
-  let photoUrl = currentUser ? currentUser.photoUrl : '';
-  const photoFile = document.getElementById('settings-photo').files[0];
-  if (photoFile) {
-    const base64 = await fileToBase64(photoFile);
-    const up = await apiPost('uploadFile', { base64Data: base64, fileName: photoFile.name, mimeType: photoFile.type });
-    if (up.directUrl) photoUrl = up.directUrl;
+  try {
+    // settings-photo is a URL text field, not a file upload input — use its value directly
+    const photoUrlValue = document.getElementById('settings-photo').value.trim();
+    const photoUrl = photoUrlValue || (currentUser ? currentUser.photoUrl : '');
+
+    const payload = {
+      name: document.getElementById('settings-full-name').value.trim(),
+      currentPosition: document.getElementById('settings-position').value.trim(),
+      pastPositions: document.getElementById('settings-past-positions').value.trim(),
+      bio: document.getElementById('settings-bio').value.trim(),
+      phone: document.getElementById('settings-phone').value.trim(),
+      prefix: document.getElementById('settings-prefix').value,
+      preferredName: document.getElementById('settings-preferred-name').value.trim(),
+      emergencyContact: document.getElementById('settings-emergency').value.trim(),
+      currentAddress: document.getElementById('settings-address').value.trim(),
+      county: document.getElementById('settings-county').value.trim(),
+      userType: document.getElementById('settings-user-type').value,
+      photoUrl,
+      email: currentUser.email
+    };
+
+    const res = await apiPost('updateProfile', payload);
+
+    if (res.success && res.profile) {
+      currentUser = res.profile;
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ email: currentUser.email, token: currentSessionToken, profile: currentUser }));
+      document.getElementById('user-display').innerText = currentUser.displayName || currentUser.name;
+      const av = document.getElementById('header-avatar');
+      av.innerHTML = currentUser.photoUrl ? `<img src="${currentUser.photoUrl}">` : (currentUser.displayName || 'U')[0];
+      alert('✅ Profile and Current Position saved successfully!');
+      loadAllProfiles();
+    } else {
+      alert(res.error || 'Failed to save');
+    }
+  } catch (err) {
+    alert('Something went wrong while saving: ' + err.message);
+  } finally {
+    btn.innerText = 'Save Profile Settings'; btn.disabled = false;
   }
-
-  const payload = {
-    name: document.getElementById('settings-full-name').value.trim(),
-    currentPosition: document.getElementById('settings-position').value.trim(),
-    pastPositions: document.getElementById('settings-past-positions').value.trim(),
-    bio: document.getElementById('settings-bio').value.trim(),
-    phone: document.getElementById('settings-phone').value.trim(),
-    prefix: document.getElementById('settings-prefix').value,
-    preferredName: document.getElementById('settings-preferred-name').value.trim(),
-    emergencyContact: document.getElementById('settings-emergency').value.trim(),
-    currentAddress: document.getElementById('settings-address').value.trim(),
-    county: document.getElementById('settings-county').value.trim(),
-    userType: document.getElementById('settings-user-type').value,
-    photoUrl,
-    email: currentUser.email
-  };
-
-  const res = await apiPost('updateProfile', payload);
-  btn.innerText = 'Save Profile'; btn.disabled = false;
-
-  if (res.success && res.profile) {
-    currentUser = res.profile;
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ email: currentUser.email, token: currentSessionToken, profile: currentUser }));
-    document.getElementById('user-display').innerText = currentUser.displayName || currentUser.name;
-    const av = document.getElementById('header-avatar');
-    av.innerHTML = currentUser.photoUrl ? `<img src="${currentUser.photoUrl}">` : (currentUser.displayName || 'U')[0];
-    alert('✅ Profile and Current Position saved successfully!');
-    loadAllProfiles();
-  } else alert(res.error || 'Failed to save');
 }
 
 // Stories Engine
