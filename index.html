@@ -3362,6 +3362,26 @@ function openMailingModal() {
   if (tabName === 'sent') loadMailSent();
   if (tabName === 'inbox') loadMailInbox();
 }
+
+    function updateMailAttachmentLabel() {
+  const input = document.getElementById('mail-attachment');
+  const label = document.getElementById('mail-attachment-name');
+  const cancelBtn = document.getElementById('mail-attachment-cancel-btn');
+  const file = input.files[0];
+  if (file) {
+    label.innerText = file.name;
+    label.style.color = 'var(--ink)';
+    cancelBtn.style.display = 'inline-flex';
+  } else {
+    label.innerText = 'No file selected';
+    label.style.color = 'var(--muted)';
+    cancelBtn.style.display = 'none';
+  }
+}
+function clearMailAttachment() {
+  document.getElementById('mail-attachment').value = '';
+  updateMailAttachmentLabel();
+}
     
 function addTypedRecipient() {
   const input = document.getElementById('mail-recipient-typein');
