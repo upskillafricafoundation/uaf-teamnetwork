@@ -1180,9 +1180,15 @@ html, body {
               </div>
 
               <div class="field">
-                <label>Profile Picture URL</label>
-                <input type="text" id="settings-photo" placeholder="https://...">
-              </div>
+  <label>Profile Picture</label>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <div class="uaf-avatar" id="settings-photo-preview" style="width:64px; height:64px; font-size:24px;">U</div>
+    <div>
+      <input type="file" id="settings-photo-file-input" accept="image/*" style="display:none;" onchange="handleSettingsPhotoFileSelect(event)">
+      <button type="button" class="btn secondary" style="padding:7px 14px; font-size:12.5px;" onclick="document.getElementById('settings-photo-file-input').click()">📷 Upload & Crop Photo</button>
+    </div>
+  </div>
+</div>
 
               <div class="field">
                 <label>Past Positions & Experience Summary</label>
@@ -2239,7 +2245,26 @@ html, body {
       </div>
     </div>
   </div>
-
+<!-- PROFILE PHOTO CROP MODAL -->
+<div class="modal" id="modal-photo-crop">
+  <div class="modal-card" style="max-width:420px; text-align:center;">
+    <h3 style="margin:0 0 6px; font-size:17px; font-weight:800; color:var(--navy-text);">Crop Profile Photo</h3>
+    <p style="font-size:12px; color:var(--muted); margin:0 0 14px;">Drag to reposition, use the slider to zoom, then tap Set Photo.</p>
+    <div id="photo-crop-canvas-wrap" style="position:relative; width:280px; height:280px; margin:0 auto; border-radius:50%; overflow:hidden; background:#111; touch-action:none; cursor:grab;">
+      <canvas id="photo-crop-canvas" width="280" height="280" style="display:block;"></canvas>
+    </div>
+    <div style="margin:16px 0 6px; display:flex; align-items:center; gap:10px;">
+      <span style="font-size:13px;">🔍−</span>
+      <input type="range" id="photo-crop-zoom" min="1" max="4" step="0.01" value="1" style="flex:1;" oninput="updatePhotoCropZoom(this.value)">
+      <span style="font-size:13px;">🔍+</span>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+      <button class="btn secondary" onclick="closeModal('modal-photo-crop')">Cancel</button>
+      <button class="btn" id="photo-crop-set-btn" onclick="confirmPhotoCrop()">✓ Set Photo</button>
+    </div>
+  </div>
+</div>
+  
   <!-- JavaScript Client Core -->
   <script>
 // UAF Team Network — Application Client v9.2
@@ -3017,18 +3042,21 @@ function populateSettingsProfileForm() {
   document.getElementById('settings-address').value = currentUser.currentAddress || '';
   document.getElementById('settings-county').value = currentUser.county || '';
   document.getElementById('settings-user-type').value = currentUser.userType || 'Volunteer';
+  const settingsPhotoPreview = document.getElementById('settings-photo-preview');
+  if (settingsPhotoPreview) {
+    settingsPhotoPreview.innerHTML = currentUser.photoUrl
+      ? `<img src="${currentUser.photoUrl}">`
+      : (currentUser.displayName || currentUser.name || 'U')[0];
+  }
 }
-
+    
 async function saveProfileSettings() {
   const btn = document.getElementById('btn-save-profile');
   btn.innerText = 'Saving...'; btn.disabled = true;
 
   try {
     // settings-photo is a URL text field, not a file upload input — use its value directly
-    const photoUrlValue = document.getElementById('settings-photo').value.trim();
-    const photoUrl = photoUrlValue || (currentUser ? currentUser.photoUrl : '');
-
-    const payload = {
+        const payload = {
       name: document.getElementById('settings-full-name').value.trim(),
       currentPosition: document.getElementById('settings-position').value.trim(),
       pastPositions: document.getElementById('settings-past-positions').value.trim(),
@@ -3040,7 +3068,7 @@ async function saveProfileSettings() {
       currentAddress: document.getElementById('settings-address').value.trim(),
       county: document.getElementById('settings-county').value.trim(),
       userType: document.getElementById('settings-user-type').value,
-      photoUrl,
+      photoUrl: currentUser.photoUrl || '',
       email: currentUser.email
     };
 
@@ -4462,8 +4490,150 @@ loadWhatsAppMessages = async function() {
     return `<div class="wa-msg-bubble ${isMine ? 'wa-msg-mine' : 'wa-msg-other'}">${!isMine ? `<div class="wa-msg-author">${escapeHtml(m.name)}</div>` : ''}${body}<div class="wa-msg-meta"><span>${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>${isMine ? '<span style="color:#53BDEB;">✓✓</span>' : ''}</div></div>`;
   }).join(''); feed.scrollTop = feed.scrollHeight;
 };
+
+    // ==================== PROFILE PHOTO CROPPER ====================
+let photoCropTargetContext = null; // 'settings' | 'avatar'
+let photoCropImage = new Image();
+let photoCropState = { scale: 1, baseScale: 1, offsetX: 0, offsetY: 0 };
+let photoCropDragging = false;
+let photoCropLastX = 0, photoCropLastY = 0;
+let photoCropListenersBound = false;
+
+function openPhotoCropper(file, targetContext) {
+  if (!file) return;
+  photoCropTargetContext = targetContext;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    photoCropImage = new Image();
+    photoCropImage.onload = () => {
+      const canvas = document.getElementById('photo-crop-canvas');
+      const baseScale = Math.max(canvas.width / photoCropImage.width, canvas.height / photoCropImage.height);
+      photoCropState = { scale: 1, baseScale, offsetX: 0, offsetY: 0 };
+      document.getElementById('photo-crop-zoom').value = 1;
+      bindPhotoCropInteractions();
+      drawPhotoCrop();
+      openModal('modal-photo-crop');
+    };
+    photoCropImage.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function drawPhotoCrop() {
+  const canvas = document.getElementById('photo-crop-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const effScale = photoCropState.baseScale * photoCropState.scale;
+  const drawW = photoCropImage.width * effScale;
+  const drawH = photoCropImage.height * effScale;
+  const x = canvas.width / 2 - drawW / 2 + photoCropState.offsetX;
+  const y = canvas.height / 2 - drawH / 2 + photoCropState.offsetY;
+  ctx.drawImage(photoCropImage, x, y, drawW, drawH);
+}
+
+function clampPhotoCropOffsets() {
+  const canvas = document.getElementById('photo-crop-canvas');
+  const effScale = photoCropState.baseScale * photoCropState.scale;
+  const drawW = photoCropImage.width * effScale;
+  const drawH = photoCropImage.height * effScale;
+  const maxOffsetX = Math.max(0, (drawW - canvas.width) / 2);
+  const maxOffsetY = Math.max(0, (drawH - canvas.height) / 2);
+  photoCropState.offsetX = Math.min(maxOffsetX, Math.max(-maxOffsetX, photoCropState.offsetX));
+  photoCropState.offsetY = Math.min(maxOffsetY, Math.max(-maxOffsetY, photoCropState.offsetY));
+}
+
+function updatePhotoCropZoom(val) {
+  photoCropState.scale = parseFloat(val);
+  clampPhotoCropOffsets();
+  drawPhotoCrop();
+}
+
+function bindPhotoCropInteractions() {
+  if (photoCropListenersBound) return;
+  photoCropListenersBound = true;
+  const wrap = document.getElementById('photo-crop-canvas-wrap');
+
+  const startDrag = (clientX, clientY) => {
+    photoCropDragging = true;
+    photoCropLastX = clientX;
+    photoCropLastY = clientY;
+    wrap.style.cursor = 'grabbing';
+  };
+  const moveDrag = (clientX, clientY) => {
+    if (!photoCropDragging) return;
+    photoCropState.offsetX += (clientX - photoCropLastX);
+    photoCropState.offsetY += (clientY - photoCropLastY);
+    photoCropLastX = clientX;
+    photoCropLastY = clientY;
+    clampPhotoCropOffsets();
+    drawPhotoCrop();
+  };
+  const endDrag = () => { photoCropDragging = false; wrap.style.cursor = 'grab'; };
+
+  wrap.addEventListener('pointerdown', (e) => { wrap.setPointerCapture(e.pointerId); startDrag(e.clientX, e.clientY); });
+  wrap.addEventListener('pointermove', (e) => moveDrag(e.clientX, e.clientY));
+  wrap.addEventListener('pointerup', endDrag);
+  wrap.addEventListener('pointercancel', endDrag);
+  wrap.addEventListener('pointerleave', endDrag);
+  wrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomSlider = document.getElementById('photo-crop-zoom');
+    let next = photoCropState.scale + (e.deltaY < 0 ? 0.05 : -0.05);
+    next = Math.min(4, Math.max(1, next));
+    zoomSlider.value = next;
+    updatePhotoCropZoom(next);
+  }, { passive: false });
+}
+
+async function confirmPhotoCrop() {
+  const canvas = document.getElementById('photo-crop-canvas');
+  const btn = document.getElementById('photo-crop-set-btn');
+  btn.innerText = 'Uploading…'; btn.disabled = true;
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+  const base64 = dataUrl.split(',')[1];
+  const fileName = `profile-photo-${Date.now()}.jpg`;
+
+  try {
+    const up = await apiPost('uploadFile', { base64Data: base64, fileName, mimeType: 'image/jpeg' });
+    if (!up.directUrl) { alert(up.error || 'Photo upload failed.'); return; }
+
+    if (photoCropTargetContext === 'settings') {
+      document.getElementById('settings-photo-preview').innerHTML = `<img src="${up.directUrl}">`;
+      const res = await apiPost('updateProfile', { photoUrl: up.directUrl, email: currentUser.email });
+      if (res.success && res.profile) {
+        currentUser = res.profile;
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ email: currentUser.email, token: currentSessionToken, profile: currentUser }));
+        document.getElementById('header-avatar').innerHTML = `<img src="${up.directUrl}">`;
+        loadAllProfiles();
+      }
+    } else if (photoCropTargetContext === 'avatar') {
+      const res = await apiPost('updateProfile', { photoUrl: up.directUrl, email: currentUser.email });
+      if (res.success && res.profile) currentUser = res.profile;
+      document.getElementById('prof-main-avatar').innerHTML = `<img src="${up.directUrl}">`;
+      document.getElementById('header-avatar').innerHTML = `<img src="${up.directUrl}">`;
+      const settingsPreview = document.getElementById('settings-photo-preview');
+      if (settingsPreview) settingsPreview.innerHTML = `<img src="${up.directUrl}">`;
+      loadAllProfiles();
+    }
+
+    closeModal('modal-photo-crop');
+  } catch (err) {
+    alert('Something went wrong uploading the photo.');
+  } finally {
+    btn.innerText = '✓ Set Photo'; btn.disabled = false;
+  }
+}
+
+function handleSettingsPhotoFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) openPhotoCropper(file, 'settings');
+  event.target.value = '';
+}
+    
 const _uafOriginalSwitchTab = switchTab;
-switchTab = function(tabName) { _uafOriginalSwitchTab(tabName); if (tabName === 'chats') startActiveCallPolling(); else if (activeCallPoll) { clearInterval(activeCallPoll); activeCallPoll = null; } }; // Settings Theme & Auth
+switchTab = function(tabName) { _uafOriginalSwitchTab(tabName); if (tabName === 'chats') startActiveCallPolling(); else if (activeCallPoll) { clearInterval(activeCallPoll); activeCallPoll = null; } }; 
+    // Settings Theme & Auth
     
 function applyFontSize(s) { document.documentElement.style.setProperty('--app-font-size', s); }
 function applyTheme(t) {
@@ -4601,7 +4771,11 @@ function promptChangeAvatarPhoto() {
     input.accept = 'image/*';
     input.id = 'prof-avatar-file-input';
     input.style.display = 'none';
-    input.addEventListener('change', handleProfilePhotoUpload);
+    input.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) openPhotoCropper(file, 'avatar');
+      e.target.value = '';
+    });
     document.body.appendChild(input);
   }
   input.value = '';
