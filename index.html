@@ -7,8 +7,8 @@
   <meta name="theme-color" content="#002868">
   <meta name="description" content="Upskill Africa Foundation (UAF) Team Network - Operations, Programs, Partnerships, Finances & Community Hub">
   <link rel="manifest" href="./manifest.json">
-  <link rel="icon" type="image/png" href="./icon.png">
-  <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <style>
 :root {
   --primary: #002868;
@@ -656,7 +656,7 @@ html, body {
               <div class="profile-social-links-bar" id="prof-social-bar"></div>
             </div>
 
-            <!-- Active Story of the Day Card (WhatsApp-style) -->
+            <!-- Active Story of the Day Card  -->
             <div id="prof-active-story-card" class="card-container" style="padding:16px; margin-bottom:16px; display:none; align-items:center; justify-content:space-between; background:linear-gradient(135deg, #FFFBEB, #FEF3C7); border:1.5px solid #FDE68A;">
               <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:42px; height:42px; border-radius:50%; background:var(--story-gradient); display:flex; align-items:center; justify-content:center; color:#FFF; font-size:20px;">⚡</div>
@@ -1306,7 +1306,7 @@ html, body {
     <div class="modal-card">
       <h3 style="margin:0 0 14px; font-size:17px; font-weight:800; color:var(--navy-text);">Share Story of the Day</h3>
       <p style="font-size:12.5px; color:var(--muted); margin:0 0 14px;">
-        WhatsApp-style story visible for 24 hours to team members, after which it automatically saves into your permanent profile timeline feed!
+       Story you shared are visible for 24 hours to all team members, after which it automatically saves into your permanent profile timeline feed!
       </p>
 
       <div class="field">
@@ -3071,9 +3071,9 @@ async function loadStories() {
 }
 function renderBottomTeamBar() {
   const row = document.getElementById('bottom-team-row');
-  let html = `
+   let html = `
     <div class="bottom-team-item" onclick="openModal('modal-post-story')">
-      <div class="add-story-bottom-btn" title="Post Story of the Day">+</div>
+      <div class="add-story-bottom-btn" id="btn-submit-story" title="Post Story of the Day">+</div>
       <div class="bottom-team-name">Your Story</div>
     </div>
   `;
@@ -3106,8 +3106,8 @@ async function submitDailyStory() {
   const bgColor = document.getElementById('story-bg-color').value;
   if (!text && !photoFile) { alert('Enter thoughts or choose a photo.'); return; }
 
-  const btn = document.getElementById('btn-submit-story');
-  btn.innerText = 'Posting Story…'; btn.disabled = true;
+    const btn = document.getElementById('btn-submit-story');
+  if (btn) { btn.innerText = 'Posting Story…'; btn.disabled = true; }
 
   let mediaUrl = '';
   if (photoFile) {
@@ -3116,8 +3116,8 @@ async function submitDailyStory() {
     if (up.directUrl) mediaUrl = up.directUrl;
   }
 
-  const res = await apiPost('postStory', { text, mediaUrl, mediaType: photoFile ? 'image' : 'text', bgColor });
-  btn.innerText = 'Share Story (24h)'; btn.disabled = false;
+    const res = await apiPost('postStory', { text, mediaUrl, mediaType: photoFile ? 'image' : 'text', bgColor });
+  if (btn) { btn.innerText = 'Share Story (24h)'; btn.disabled = false; }
 
   if (res.success) {
     document.getElementById('story-text-input').value = '';
