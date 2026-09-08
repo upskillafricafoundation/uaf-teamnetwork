@@ -3651,7 +3651,7 @@ let allPartnerships = [];
 
 async function loadPartnerships() {
   allPartnerships = await cachedFetch('partnerships', 'partnerships');
-  const canManage = currentUser && currentUser.isSuperAdmin;
+  const canManage = currentUser && (currentUser.isSuperAdmin || currentUser.isExecutiveManagement); // was: isSuperAdmin only
   document.getElementById('new-partner-btn').style.display = canManage ? 'inline-flex' : 'none';
   const container = document.getElementById('partnerships-container');
   if (!Array.isArray(allPartnerships)) return;
@@ -3689,15 +3689,23 @@ function openPartnershipDetail(partnershipId) {
   document.getElementById('pdetail-tel').innerText = p.tel || '—';
   document.getElementById('pdetail-address').innerText = p.address || '—';
 
-  const canManage = currentUser && currentUser.isSuperAdmin;
-  const actionsRow = document.getElementById('pdetail-actions');
-  actionsRow.style.display = canManage ? 'flex' : 'none';
-  if (canManage) {
+  // Edit: Admin OR Executive Management. Delete: Admin only.
+  const canEdit = currentUser && (currentUser.isSuperAdmin || currentUser.isExecutiveManagement);
+  const canDelete = currentUser && currentUser.isSuperAdmin;
+
+  document.getElementById('pdetail-actions').style.display = 'flex'; // always visible — Close lives here
+  document.getElementById('pdetail-edit-btn').style.display = canEdit ? 'inline-flex' : 'none';
+  document.getElementById('pdetail-delete-btn').style.display = canDelete ? 'inline-flex' : 'none';
+
+  if (canEdit) {
     document.getElementById('pdetail-edit-btn').onclick = () => { closeModal('modal-partnership-detail'); openEditPartnershipModal(p.id); };
+  }
+  if (canDelete) {
     document.getElementById('pdetail-delete-btn').onclick = () => { closeModal('modal-partnership-detail'); deletePartnershipUI(p.id); };
   }
   openModal('modal-partnership-detail');
 }
+    
 function openEditPartnershipModal(partnershipId) {
   const p = allPartnerships.find(x => x.id === partnershipId);
   if (!p) return;
