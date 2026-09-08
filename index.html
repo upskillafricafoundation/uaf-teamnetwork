@@ -1465,8 +1465,8 @@ html, body {
     <div class="modal-card" style="max-width:680px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
         <div>
-          <h3 style="margin:0; font-size:18px; font-weight:800; color:var(--navy-text);">UAF Broadcast Mailing Center</h3>
-          <div style="font-size:12px; color:var(--muted);">Dispatches official emails from <b>info.uaf@gmail.com</b></div>
+          <h3 style="margin:0; font-size:18px; font-weight:800; color:var(--navy-text);">UAF Official Mailing Center</h3>
+          <div style="font-size:12px; color:var(--muted);">Send official emails from <b>info.uaf@gmail.com</b></div>
         </div>
         <button onclick="closeModal('modal-mailing')" style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
       </div>
@@ -2573,8 +2573,7 @@ async function loadNotifications() {
   container.innerHTML = data.map(n => {
     const isRead = n.isRead || readSet.has(n.id);
     return `
-      <div class="card-container" id="notif-card-${n.id}" style="padding:14px 16px; margin-bottom:9px; cursor:pointer; display:flex; align-items:flex-start; justify-content:space-between; ${isRead ? 'opacity:0.8; background:#FAFAFA;' : 'border-left:4px solid var(--primary); background:#FFF;'}" onclick="handleNotificationClick('${n.id}', '${n.targetTab || 'feed'}', '${n.targetId || ''}')">
-        <div style="flex:1;">
+      <div class="card-container" id="notif-card-${n.id}" data-type="${escapeHtml(n.type || '')}" style="padding:14px 16px; margin-bottom:9px; cursor:pointer; display:flex; align-items:flex-start; justify-content:space-between; ${isRead ? 'opacity:0.8; background:#FAFAFA;' : 'border-left:4px solid var(--primary); background:#FFF;'}" onclick="handleNotificationClick('${n.id}', '${n.targetTab || 'feed'}', '${n.targetId || ''}')">        <div style="flex:1;">
           <div style="font-size:13.5px; color:var(--navy-text); ${isRead ? '' : 'font-weight:700;'}">${escapeHtml(n.message)}</div>
           <div style="font-size:11.5px; color:var(--muted); margin-top:4px;">${new Date(n.timestamp).toLocaleString()}</div>
         </div>
@@ -2596,8 +2595,19 @@ async function handleNotificationClick(notifId, targetTab, targetId) {
   const card = document.getElementById(`notif-card-${notifId}`);
   if (card) { card.style.borderLeft = 'none'; card.style.opacity = '0.8'; card.style.background = '#FAFAFA'; }
 
-  apiPost('markNotificationRead', { notificationId: notifId });
+   apiPost('markNotificationRead', { notificationId: notifId });
   if (targetTab) switchTab(targetTab);
+
+  // If this was an inbox mail notification, jump straight into the Mailing → Inbox view
+  const notifCard = document.getElementById(`notif-card-${notifId}`);
+  const isMailInbox = notifCard && notifCard.dataset.type === 'mail-inbox';
+  if (isMailInbox) {
+    openMailingModal();
+    setTimeout(() => {
+      const inboxBtn = Array.from(document.querySelectorAll('#modal-mailing .sub-nav-tab')).find(b => b.getAttribute('onclick')?.includes("'inbox'"));
+      if (inboxBtn) switchMailTab('inbox', inboxBtn);
+    }, 150);
+  }
 }
 async function markAllNotificationsAsReadUI() {
   const cards = document.querySelectorAll('[id^="notif-card-"]');
