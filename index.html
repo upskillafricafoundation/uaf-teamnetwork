@@ -3379,7 +3379,8 @@ function openMailingModal() {
   }
 }
 function clearMailAttachment() {
-  document.getElementById('mail-attachment').value = '';
+      document.getElementById('mail-attachment').value = '';
+    updateMailAttachmentLabel();
   updateMailAttachmentLabel();
 }
     
