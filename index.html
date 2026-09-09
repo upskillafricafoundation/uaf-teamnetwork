@@ -2320,15 +2320,17 @@ let deferredInstallPrompt = null;
 let loginTimestamp = Date.now();
 let lastNotifCheckTime = Date.now();
 // ---------- Real Firebase Cloud Messaging Setup ----------
-const UAF_FIREBASE_CONFIG = {
-  apiKey: "PASTE_YOUR_API_KEY",
-  authDomain: "PASTE_YOUR_AUTH_DOMAIN",
-  projectId: "PASTE_YOUR_PROJECT_ID",
-  storageBucket: "PASTE_YOUR_STORAGE_BUCKET",
-  messagingSenderId: "PASTE_YOUR_SENDER_ID",
-  appId: "PASTE_YOUR_APP_ID"
+const firebaseConfig = {
+  apiKey: "AIzaSyD3IhrkjB-cRzYZVBscwkYehPd0VS00YFw",
+  authDomain: "uaf-team-network.firebaseapp.com",
+  projectId: "uaf-team-network",
+  storageBucket: "uaf-team-network.firebasestorage.app",
+  messagingSenderId: "936656734962",
+  appId: "1:936656734962:web:84267c3b78809822bade6b",
+  measurementId: "G-9CNP5RP4Y1"
 };
-const UAF_VAPID_KEY = "PASTE_YOUR_VAPID_KEY";
+
+const UAF_VAPID_KEY = "BL_LeUSHh91gWavB3gw7iGASqnWb2wlr7vgg2s85Wq8GgEdq12FAk8xBGhQ0U-5a5mmv_V_1XbKB76vuNsuDtxs";
 
 let firebaseMessagingInstance = null;
 function ensureFirebaseInitialized() {
