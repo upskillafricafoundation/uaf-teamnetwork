@@ -426,6 +426,29 @@ html, body {
   .topbar-search-box { display: none; }
   .app-content-body { padding: 14px 14px calc(84px + env(safe-area-inset-bottom, 0px)); }
   .app-bottom-team-bar { left: 56px; padding: 6px 14px calc(6px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Global Action Loading Overlay — prevents double-clicks / double-submissions */
+#action-loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  z-index: 6000;
+  display: none;
+  align-items: center; justify-content: center;
+  cursor: wait;
+}
+#action-loading-overlay.visible { display: flex; }
+.action-loading-box {
+  background: #FFF; padding: 18px 26px; border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13.5px; font-weight: 700; color: var(--navy-text, #0F172A);
+}
+.action-loading-spinner {
+  width: 22px; height: 22px; border: 3px solid #E2E8F0;
+  border-top-color: var(--primary, #002868); border-radius: 50%;
+  animation: actionSpin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes actionSpin { to { transform: rotate(360deg); } }
 }
 
 </style>
@@ -435,6 +458,14 @@ html, body {
   <!-- In-App Notification Live Toast Container -->
   <div id="in-app-toast-container"></div>
 
+  <!-- Global Loading Overlay: blocks repeat clicks while a request is in-flight -->
+<div id="action-loading-overlay">
+  <div class="action-loading-box">
+    <div class="action-loading-spinner"></div>
+    <span id="action-loading-text">Processing…</span>
+  </div>
+</div>
+  
   <!-- Initial Session Checking Overlay -->
   <div id="session-check">
     <div class="loading-spinner"></div>
@@ -2348,17 +2379,36 @@ async function cachedFetch(action, cacheKey) {
     return c ? JSON.parse(c) : [];
   }
 }
+let activeApiRequests = 0;
+function showActionLoading(message) {
+  activeApiRequests++;
+  const overlay = document.getElementById('action-loading-overlay');
+  const textEl = document.getElementById('action-loading-text');
+  if (textEl) textEl.innerText = message || 'Processing…';
+  if (overlay) overlay.classList.add('visible');
+}
+function hideActionLoading() {
+  activeApiRequests = Math.max(0, activeApiRequests - 1);
+  if (activeApiRequests === 0) {
+    const overlay = document.getElementById('action-loading-overlay');
+    if (overlay) overlay.classList.remove('visible');
+  }
+}
+
 async function apiPost(action, data = {}) {
   const payload = {
     action, ...data,
     email: data.email || (currentUser ? currentUser.email : undefined),
     sessionToken: data.sessionToken || currentSessionToken || undefined
   };
+  showActionLoading();
   try {
     const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
     return await res.json();
   } catch (err) {
     return { error: 'Connection failed' };
+  } finally {
+    hideActionLoading();
   }
 }
 
