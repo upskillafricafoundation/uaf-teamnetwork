@@ -1253,6 +1253,17 @@ html, body {
               </div>
             </div>
 
+            <!-- Admin Chat Activity Audit (metadata only, never message content) -->
+            <div class="card-container" id="admin-chat-audit-card" style="padding:20px; margin-bottom:16px; display:none;">
+              <h3 style="margin:0 0 10px; font-size:16px; font-weight:800; color:var(--navy-text);">🔒 Chat Activity (Admin Audit)</h3>
+              <p style="font-size:12.5px; color:var(--muted); margin:0 0 14px;">
+                For oversight only — shows who is chatting with whom and how active each conversation is. Message content stays private between participants and is not accessible here.
+              </p>
+              <div id="admin-chat-audit-list">
+                <div style="text-align:center; padding:16px; color:var(--muted); font-size:13px;">Loading…</div>
+              </div>
+            </div>
+            
             <!-- Appearance & Security -->
             <div class="card-container" style="padding:20px; margin-bottom:16px;">
               <h3 style="margin:0 0 14px; font-size:16px; font-weight:800; color:var(--navy-text);">Appearance & System</h3>
@@ -2323,7 +2334,8 @@ let previousTab = 'feed';
 let deferredInstallPrompt = null;
 let loginTimestamp = Date.now();
 let lastNotifCheckTime = Date.now();
-// ---------- Real Firebase Cloud Messaging Setup ----------
+
+    // ---------- Real Firebase Cloud Messaging Setup ----------
 const UAF_FIREBASE_CONFIG = {
   apiKey: "AIzaSyD3IhrkjB-cRzYZVBscwkYehPd0VS00YFw",
   authDomain: "uaf-team-network.firebaseapp.com",
@@ -2547,9 +2559,10 @@ function enterApp() {
   loadContacts();
   loadPartnerships();
   loadPrograms();
-  loadTasks();
+    loadTasks();
   updateLiveNotificationUI();
   populateSettingsProfileForm();
+  loadAdminChatAudit();
 
   // Periodic heartbeat & live notification poller
   setInterval(() => { if (currentUser) apiPost('pingActive', {}); }, 4 * 60 * 1000);
@@ -3435,6 +3448,7 @@ async function loadContacts() {
   allContacts = await cachedFetch('contacts', 'contacts');
   const canManage = currentUser && (currentUser.isSuperAdmin || currentUser.isExecutiveManagement);
   document.getElementById('btn-add-contact').style.display = canManage ? 'inline-flex' : 'none';
+  
   // Mailing button is always visible on all devices
   document.getElementById('btn-toggle-mailing').style.display = 'inline-flex';
   renderContactsList(allContacts);
@@ -4365,6 +4379,30 @@ function stopChatRoomPolling() { if (chatRoomPollInterval) { clearInterval(chatR
 function startChatListPolling() { stopChatListPolling(); chatListPollInterval = setInterval(() => { loadChats(); }, 8000); }
 function stopChatListPolling() { if (chatListPollInterval) { clearInterval(chatListPollInterval); chatListPollInterval = null; } }
 
+    async function loadAdminChatAudit() {
+  if (!currentUser || !currentUser.isSuperAdmin) return;
+  const card = document.getElementById('admin-chat-audit-card');
+  if (card) card.style.display = 'block';
+  const data = await apiFetchAction('channelsAudit');
+  const container = document.getElementById('admin-chat-audit-list');
+  if (!container) return;
+  if (!Array.isArray(data) || !data.length) {
+    container.innerHTML = `<div style="color:var(--muted); font-size:13px;">No private conversations yet.</div>`;
+    return;
+  }
+  container.innerHTML = data.map(c => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+      <div>
+        <div style="font-weight:700; font-size:13px; color:var(--navy-text);">${escapeHtml(c.type === 'group' ? (c.name || 'Group') : c.members.join(' ↔ '))}</div>
+        ${c.type === 'group' ? `<div style="font-size:11.5px; color:var(--muted); margin-top:2px;">${escapeHtml(c.members.join(', '))}</div>` : ''}
+      </div>
+      <div style="text-align:right; font-size:11.5px; color:var(--muted);">
+        ${c.messageCount} msg${c.messageCount === 1 ? '' : 's'}<br>
+        ${c.lastActivity ? new Date(c.lastActivity).toLocaleDateString() : '—'}
+      </div>
+    </div>
+  `).join('');
+}
 // Search
 let searchRegistry = [];
 function handleUniversalSearch(q) {
