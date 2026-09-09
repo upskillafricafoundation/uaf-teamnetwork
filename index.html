@@ -186,7 +186,11 @@ html, body {
 .post-author-name { font-weight: 800; color: var(--navy-text); font-size: 14.5px; }
 .post-author-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
 .post-body-text { font-size: 14.5px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
-.post-img { width: 100%; max-height: 420px; object-fit: cover; border-radius: var(--radius-md); margin-top: 12px; }
+.post-body-text.clamped { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: normal;}
+.post-read-more-btn {
+  background: none; border: none; padding: 0; margin-top: 6px;
+  color: var(--primary); font-weight: 700; font-size: 13px; cursor: pointer; display: inline-block;
+}.post-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-md); margin-top: 12px; display: block; background: #F1F5F9; }
 .post-metrics-bar { display: flex; justify-content: space-between; padding: 12px 4px 8px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); margin-top: 10px; }
 .post-actions-bar { display: flex; gap: 6px; padding-top: 8px; }
 .post-act-btn {
@@ -4096,8 +4100,9 @@ async function loadFeed() {
           </div>
           ${isAuthor ? `<button class="btn danger" style="padding:2px 8px; font-size:11px;" onclick="deleteFeedPost('${post.id}')">Delete</button>` : ''}
         </div>
-        <div class="post-body-text">${formatMentionsAndText(post.text)}</div>
-        ${post.imageUrl ? `<img src="${post.imageUrl}" class="post-img">` : ''}
+        <div class="post-body-text clamped" id="post-text-${post.id}">${formatMentionsAndText(post.text)}</div>
+        ${(post.text || '').length > 220 ? `<button class="post-read-more-btn" id="post-readmore-${post.id}" onclick="toggleFeedPostText('${post.id}')">Read more</button>` : ''}
+        ${post.imageUrl ? `<img src="${post.imageUrl}" class="post-img" loading="lazy">` : ''}
         <div class="post-metrics-bar">
           <span>👍 ${post.likes ? post.likes.length : 0} • 👎 ${post.dislikes ? post.dislikes.length : 0}</span>
           <span>💬 ${post.comments ? post.comments.length : 0} • 🔁 ${post.repostsCount || 0}</span>
@@ -4144,8 +4149,15 @@ async function reactPost(postId, reactionType) {
   await apiPost('reactFeedPost', { postId, reactionType, authorName: currentUser.displayName || currentUser.name });
   loadFeed();
 }
-function toggleComments(id) { const el = document.getElementById(`comments-${id}`); el.style.display = el.style.display === 'block' ? 'none' : 'block'; }
-async function submitComment(postId) {
+function toggleFeedPostText(postId) {
+  const textEl = document.getElementById(`post-text-${postId}`);
+  const btn = document.getElementById(`post-readmore-${postId}`);
+  if (!textEl || !btn) return;
+  const isClamped = textEl.classList.contains('clamped');
+  textEl.classList.toggle('clamped');
+  btn.innerText = isClamped ? 'Show less' : 'Read more';
+}
+    async function submitComment(postId) {
   const input = document.getElementById(`comment-input-${postId}`);
   if (!input.value.trim()) return;
   await apiPost('commentFeedPost', { postId, authorName: currentUser.displayName || currentUser.name, text: input.value.trim() });
